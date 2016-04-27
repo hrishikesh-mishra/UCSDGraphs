@@ -14,6 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -251,8 +252,84 @@ public class MapGraph {
 
 		// Hook for visualization.  See writeup.
 		//nodeSearched.accept(next.getLocation());
+		/** In case start or goal is null. **/
+		if(Objects.isNull(start) || Objects.isNull(goal))
+			throw new  IllegalArgumentException("Start and goal should not be null");
 		
-		return null;
+		/** In case start or goal vertex doesn't exist **/
+		if(!isVertexExists(start) || !isVertexExists(goal))
+			throw new  IllegalArgumentException("Start or goal doesn't exist.");
+			
+		
+		Map<GeographicPoint, GeographicPoint> parentMap = dijkstraSearch(start, goal, nodeSearched);
+		
+		if(parentMap.isEmpty()){
+			System.out.println("No route found ");
+			return null; 
+		}
+		
+		return createPath(start, goal, parentMap);
+		
+	}
+	
+	/**
+	 * Dijkstra Search algorithm 
+	 *  
+	 * @param start
+	 * @param goal
+	 * @param nodeSearched
+	 * @param parentMap
+	 */
+	public Map<GeographicPoint, GeographicPoint> dijkstraSearch(GeographicPoint start, GeographicPoint goal, 
+					Consumer<GeographicPoint> nodeSearched){
+		
+		PriorityQueue<MapNodeDistance>  queue = new PriorityQueue<>(); 				
+		Set<GeographicPoint> visitedLocation = new HashSet<>();		
+		Map<GeographicPoint, GeographicPoint> parentMap = new HashMap<>();
+		Map<MapNode, Double> distanceMap = new HashMap<>();
+		
+		/** Setting Max value for distance from start node.**/
+		for(MapNode node : vertices.values()){
+			distanceMap.put(node, Double.MAX_VALUE);
+		}
+		
+		/** Resetting 0 for start node **/
+		distanceMap.put(vertices.get(start), 0.0);
+		
+		/** Adding start node to queue **/
+		queue.add(new MapNodeDistance(vertices.get(start), 0));
+		
+		/** Adding start node to visited list **/
+		visitedLocation.add(start);
+		
+		while(!queue.isEmpty()){
+			MapNodeDistance currentMapDistance = queue.remove();
+			MapNode currentNode = currentMapDistance.getVertex();
+				
+			// Hook for visualization.
+			nodeSearched.accept(currentNode.getLocation());
+			
+			/** if goal found **/
+			if(currentNode.getLocation().equals(goal)) 								
+				return parentMap; 				
+			
+			/** iterating all neighbors of current node **/
+			for(MapEdge edge: currentNode.getEdges()){				
+				if(!visitedLocation.contains(edge.getEnd())){
+					double newDistance = distanceMap.get(currentNode) + edge.getDistance();
+					if(newDistance < distanceMap.get(vertices.get(edge.getEnd()))){
+						distanceMap.put(vertices.get(edge.getEnd()), newDistance);
+						parentMap.put(edge.getEnd(), currentNode.getLocation());
+						queue.add(new MapNodeDistance(vertices.get(edge.getEnd()), newDistance));
+						visitedLocation.add(edge.getEnd());
+					}
+					
+				}				
+			}				
+		}
+		
+		/** In case path is not found **/
+		return new HashMap<GeographicPoint, GeographicPoint>();
 	}
 
 	/** Find the path from start to goal using A-Star search
@@ -299,49 +376,54 @@ public class MapGraph {
 	
 	public static void main(String[] args)
 	{
+		
+		/* Use this code in Week 3 End of Week Quiz
+		 
 		System.out.print("Making a new map...");
 		MapGraph theMap = new MapGraph();
 		System.out.print("DONE. \nLoading the map...");
 		GraphLoader.loadRoadMap("data/testdata/simpletest.map", theMap);
 		System.out.println("DONE.");
 		
-		/** Get path between [1.0, 1.0] to [8.0,  -1.0] **/
+		// Get path between [1.0, 1.0] to [8.0,  -1.0] 
 		List<GeographicPoint> path1 = theMap.bfs(new GeographicPoint(1.0, 1.0), new GeographicPoint(8.0, -1.0));
 		System.out.println("Get path between [1.0, 1.0] to [8.0, -1.0] : ");
 		for(GeographicPoint location: path1){
 			System.out.println(location);	
 		}
 		
-		/** Get path between [1.0, 1.0] to [6.5,  0.0] **/
+		// Get path between [1.0, 1.0] to [6.5,  0.0] 
 		List<GeographicPoint> path2 = theMap.bfs(new GeographicPoint(1.0, 1.0), new GeographicPoint(6.5, 0.0));
 		System.out.println("\nGet path between [1.0, 1.0] to [6.5,  0.0] : ");
 		for(GeographicPoint location: path2){
 			System.out.println(location);	
 		}
 		
-		/** Get path between [4.0, 0.0] to [6.5,  0.0] **/
+		// Get path between [4.0, 0.0] to [6.5,  0.0]  
 		List<GeographicPoint> path3 = theMap.bfs(new GeographicPoint(4.0, 0.0), new GeographicPoint(6.5, 0.0));
 		System.out.println("\nGet path between [4.0, 0.0] to [6.5,  0.0] : ");
 		for(GeographicPoint location: path3){
 			System.out.println(location);	
 		}
-		// You can use this method for testing.  
-		
-		/* Use this code in Week 3 End of Week Quiz
+		*/
+
+				
+		// Use this code in Week 3 End of Week Quiz		
 		MapGraph theMap = new MapGraph();
 		System.out.print("DONE. \nLoading the map...");
-		GraphLoader.loadRoadMap("data/maps/utc.map", theMap);
+		GraphLoader.loadRoadMap("data/maps/utc.map", theMap);		
 		System.out.println("DONE.");
 
 		GeographicPoint start = new GeographicPoint(32.8648772, -117.2254046);
 		GeographicPoint end = new GeographicPoint(32.8660691, -117.217393);
 		
 		
-		List<GeographicPoint> route = theMap.dijkstra(start,end);
-		List<GeographicPoint> route2 = theMap.aStarSearch(start,end);
-
-		*/
-		
+		List<GeographicPoint> route = theMap.dijkstra(start,end);		 
+		System.out.println("\nGet path between start: " + start + " to : " + end );
+		for(GeographicPoint location: route){
+			System.out.println(location);	
+		}
+			 		
 	}
 	
 }
